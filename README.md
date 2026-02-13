@@ -123,7 +123,7 @@ L'application n'avait pas le connecteur de MariaDB présent dans les requirement
     docker ps
     docker exec -ti container_name /bin/bash
     ```
-    Nous avons ensuite suivi la documentation du projet et tapé les commandes suivantes :
+    Nous avons ensuite suivi la documentation de l'application ecommerce et tapé les commandes suivantes :
     ```bash
     python manage.py makemigrations
     python manage.py migrate
@@ -193,7 +193,7 @@ Commande pour appliquer les modifications :
 
 - ![Apply](docs/images/apply-f.png)
 
-Voici nos informations finales : 
+Vérification de l'état des déploiements : 
 
 - ![Commandes de vérification](docs/images/get_all_infos.png)
 
@@ -201,7 +201,7 @@ Chaque environnement dispose ainsi de ses propres ressources, assurant l’isola
 
 ---
 
-## Partie 3 (facultative) : Intégration d’une base de données
+## Partie 3 : Intégration d’une base de données
 
 Une base de données autre que SQLite doit être déployée et connectée à l’application Stripe.
 
@@ -370,3 +370,22 @@ Retour :
 NAME                       READY   AGE
 statefulset.apps/mariadb   1/1     22s
 ```
+
+---
+
+## Accès aux services depuis l'extérieur
+Nous avions rencontré des difficultés d'usage avec mikicube port forward qui était extrêmement lent, nous l'avons donc remplacé par socat qui nous a permis de publier nos NodePorts sur l'IP Publique de notre VM avec de bien meilleures performances.
+```bash
+# Commande pour le site e-commerce de Prod
+sudo socat TCP-LISTEN:5005,fork,reuseaddr TCP:$(minikube ip):30005
+```
+```bash
+# Commande pour PhpMyAdmin de Prod
+sudo socat TCP-LISTEN:8080,fork,reuseaddr TCP:$(minikube ip):30080
+```
+
+---
+
+## Conclusion
+
+Ce projet nous a permis de mettre en pratique les principes fondamentaux de Kubernetes à travers le déploiement d'une application e-commerce et d'une stack complète. Nous avons réussi à containeriser nos services (Flask, MariaDB et PHPMyAdmin), publier une "application métier" sur Docker Hub et les orchestrer via Minikube.
