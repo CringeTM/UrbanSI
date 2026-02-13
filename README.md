@@ -14,6 +14,8 @@ Ce document présente la démarche et les étapes réalisées dans le cadre du p
 
 - [TP : Projet E5 SAB - Urbanisation des SI (PDF)](docs/pdf/Projet%20E5%20SAB%20-%20Urbanisation%20des%20SI.pdf)
 
+- Ressource que vous nous avez donnée dans le devoir
+
 ## Partie 1 : Mise en place de l’environnement
 
 ### Choix du framework Kubernetes
@@ -150,7 +152,7 @@ Cela permet d’assurer que trois pods de l’application sont toujours déploy�
 
 ### Accès interne via le LoadBalancer
 
-Le fichier de configuration du LoadBalancer est disponible ici : [prod-deployment.yml](docs/files/prod-deployment.yml)
+Le fichier de configuration du LoadBalancer est disponible ici : [prod-deployment.yaml](docs/files/prod-deployment.yaml)
 
 ```bash
 curl -I 192.168.49.2:31491
@@ -205,19 +207,48 @@ Pour permettre l’accès aux applications à plusieurs équipes, des environnem
 
 L’infrastructure as code doit être déployée de façon identique dans ces trois environnements.
 
+### Déploiement multi-environnements
+
+Trois fichiers de déploiement Kubernetes ont été créés pour isoler les environnements :
+
+- [`prod-deployment.yaml`](docs/files/prod-deployment.yaml) : environnement de production
+- [`preprod-deployment.yaml`](docs/files/preprod-deployment.yaml) : environnement de préproduction
+- [`mlops-deployment.yaml`](docs/files/mlops-deployment.yaml) : environnement MLOps
+
+Chaque fichier contient la même structure d’infrastructure (namespace, déploiements, services, volumes, etc.), adaptée à l’environnement cible.  
+Cela permet à chaque équipe de travailler dans un environnement isolé, tout en garantissant la cohérence des ressources déployées.
+
+#### Commande pour appliquer les environnements
+
+```bash
+k apply -f prod-deployment.yaml
+k apply -f preprod-deployment.yaml
+k apply -f mlops-deployment.yaml
+```
+
+Commande pour appliquer les modifications :
+
+- ![Apply](docs/images/apply-f.png)
+
+Voici nos informations finales : 
+
+- ![Commandes de vérification](docs/images/get_all_infos.png)
+
+Chaque environnement dispose ainsi de ses propres ressources, assurant l’isolation et la reproductibilité des déploiements.
+
 ---
 
 ## Partie 3 (facultative) : Intégration d’une base de données
 
 Une base de données autre que SQLite doit être déployée et connectée à l’application Stripe.
 
-### Exemple de configuration MariaDB dans `prod-deployment.yml`
+### Exemple de configuration MariaDB dans `prod-deployment.yaml`
 
 La documentation [MariaDB sur Kubernetes de IONOS](https://www.ionos.fr/digitalguide/hebergement/aspects-techniques/mariadb-kubernetes/) a été utilisée pour intégrer MariaDB au projet. Le fichier a été adapté pour répondre aux besoins spécifiques.
 
 Nous avons ajouter les namespaces "prod" sur notre fichier pour faire fonctionner MariaDB et PhpMyAdmin.
 
-Pour voir les infos de mariadb, vous pouvez lire `prod-deployment.yml`.
+Pour voir les infos de mariadb, vous pouvez lire `prod-deployment.yaml`.
 
 ```yaml
 # Principales informations de mariadb
@@ -267,7 +298,7 @@ metadata:
   name: mariadb
   namespace: prod
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: mariadb
@@ -328,6 +359,7 @@ metadata:
   name: phpmyadmin
   namespace: prod
 spec:
+  replicas: 3
   selector:
     matchLabels:
       app: phpmyadmin
