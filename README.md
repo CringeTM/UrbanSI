@@ -4,17 +4,22 @@ Ce document présente la démarche et les étapes réalisées dans le cadre du p
 ## Groupe et Références
 
 - **Membres du groupe :**
-    - Mathieu LALANDE
-    - Eloise BLAIZOT
-    - Amaury DUPRESSOIRE
-    - Lucie CADET
-    - Anthony BILLON
+    - BILLON Anthony
+    - BLAIZOT Éloïse
+    - CADET Lucie
+    - DUPRESSOIR Amaury
+    - LALANDE Mathieu
 
 - [Dépôt GitHub du projet](https://github.com/CringeTM/UrbanSI?tab=readme-ov-file)
 
 - [TP : Projet E5 SAB - Urbanisation des SI (PDF)](docs/pdf/Projet%20E5%20SAB%20-%20Urbanisation%20des%20SI.pdf)
 
-- Ressource que vous nous avez donnée dans le devoir
+- Ressource fournié dans le devoir
+
+## Partie 0 : Applications sélectionnées
+- Application Rocket Flask Stripe
+- MariaDB
+- PHPMyAdmin
 
 ## Partie 1 : Mise en place de l’environnement
 
@@ -51,15 +56,14 @@ minikube image load rocket:local
 Après avoir fait fonctionner l’image en local, nous l’avons publiée sur Docker Hub afin que les images des applications soient accessibles depuis un repository Docker Hub.
 
 ---
-
 ### Publication de l’image sur Docker Hub
 
 Pour permettre le déploiement sur différents environnements et garantir l’accessibilité de l’image, celle-ci a été publiée sur un repository Docker Hub public : [warpprod/rocket-ecommerce](https://hub.docker.com/r/warpprod/rocket-ecommerce).
 
-L’image peut ainsi être utilisée directement dans les manifestes Kubernetes via la référence suivante :
+L’image à été envoyée dans DockerHub via la commande suivante :
 
 ```bash
-docker build -t warpprod/rocket-ecommerce .
+docker build -t warpprod/rocket-ecommerce . && docker push warpprod/rocket-ecommerce
 ```
 
 ```text
@@ -93,7 +97,7 @@ Après avoir construit l’image, vous pouvez vérifier qu’elle est bien dispo
 docker images | grep warpprod/rocket-ecommerce
 ```
 
-On peut également spécifier l’image dans vos manifestes Kubernetes comme ceci :
+On spécifie donc l’image dans nos manifestes Kubernetes comme ceci :
 
 ```bash
 image: warpprod/rocket-ecommerce:latest
@@ -101,23 +105,31 @@ image: warpprod/rocket-ecommerce:latest
 
 Cela assure que toutes les équipes et environnements peuvent accéder à la même version de l’application.
 
-### Initialisation de la base de données et connexion à l’application e-commerce
+### Configuration de l'application pour MariaDB
 
-Après le déploiement de MariaDB, il est nécessaire d’initialiser la base de données et de connecter l’application e-commerce à celle-ci. Pour cela :
+L'application n'avait pas le connecteur de MariaDB présent dans les requirements de l'aplication, nous avons dû l'ajouter
 
-1. **Configurer la connexion** :  
-    Pensez également à modifier le fichier `requirements.txt` pour ajouter la dépendance suivante :  
+1. **Installer le connecteur** :  
+    Modifier le fichier `requirements.txt` pour ajouter la dépendance suivante :  
 
     ```python
     PyMySQL==1.1.0
     ```
 
-2. **Vérifier la connexion** :  
-    Nous avons ensuite accéder à PhpMyAdmin via le port exposé (`localhost:8080`) pour vérifier que les tables ont bien été créées et que l’application communique correctement avec la base MariaDB.
-
-Après avoir initialisé la base de données, l’application e-commerce est désormais connectée à MariaDB déployée dans le cluster Kubernetes.
-
-![Initialisation de la base de donnée](docs/images/initiation_bdd.png)
+2. **Migration de la database** :
+    Nous nous sommes connecté à l'un des conteurs via les commandes suivantes :
+    ```bash
+    minikube ssh
+    docker ps
+    docker exec -ti container_name /bin/bash
+    ```
+    Nous avons ensuite suivi la documentation du projet et tapé les commandes suivantes :
+    ```bash
+    python manage.py makemigrations
+    python manage.py migrate
+    ```
+    ![Initialisation de la base de donnée](docs/images/initiation_bdd.png)
+   
 
 Nous avons ensuite ajouté un produit **Mug** dans Stripe, qui apparaît bien dans l’interface du site e-commerce :
 
@@ -147,55 +159,6 @@ spec:
 ```
 
 Cela permet d’assurer que trois pods de l’application sont toujours déployés et disponibles dans le cluster.
-
-## Accès à l’application via CURL (interne et externe)
-
-### Accès interne via le LoadBalancer
-
-Le fichier de configuration du LoadBalancer est disponible ici : [prod-deployment.yaml](files/prod-deployment.yaml)
-
-```bash
-curl -I 192.168.49.2:31491
-```
-
-Réponse :
-
-```text
-HTTP/1.1 200 OK
-Server: gunicorn
-Date: Fri, 13 Feb 2026 09:53:51 GMT
-Connection: close
-Content-Type: text/html; charset=utf-8
-X-Frame-Options: DENY
-Content-Length: 20823
-Vary: Cookie
-X-Content-Type-Options: nosniff
-Referrer-Policy: same-origin
-Cross-Origin-Opener-Policy: same-origin
-```
-
-### Accès externe via le LoadBalancer
-
-```bash
-minikube tunnel
-```
-
-Retour :
-
-```text
-Status:
-        machine: minikube
-        pid: 42043
-        route: 10.96.0.0/12 -> 192.168.49.2
-        minikube: Running
-        services: [ecommerce-front-service]
-    errors: 
-                minikube: no errors
-                router: no errors
-                loadbalancer emulator: no errors
-```
-
----
 
 ## Partie 2 : Déploiement multi-environnements
 
@@ -246,7 +209,7 @@ Une base de données autre que SQLite doit être déployée et connectée à l�
 
 La documentation [MariaDB sur Kubernetes de IONOS](https://www.ionos.fr/digitalguide/hebergement/aspects-techniques/mariadb-kubernetes/) a été utilisée pour intégrer MariaDB au projet. Le fichier a été adapté pour répondre aux besoins spécifiques.
 
-Nous avons ajouter les namespaces "prod" sur notre fichier pour faire fonctionner MariaDB et PhpMyAdmin.
+Nous avons ajouter les namespaces "prod" sur notre fichier pour faire fonctionner MariaDB et PhpMyAdmin (qui permettra à un adaministrateur de maintenir la base de données du site).
 
 Pour voir les infos de mariadb, vous pouvez lire `prod-deployment.yaml`.
 
