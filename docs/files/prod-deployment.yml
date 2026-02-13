@@ -24,6 +24,9 @@ spec:
         imagePullPolicy: Never
         ports:
         - containerPort: 5005
+        envFrom:
+        - configMapRef:
+            name: ecommerce-configmap
         resources:
           requests:
             memory: 128Mi
@@ -31,6 +34,21 @@ spec:
           limits:
             memory: 2048Mi
             cpu: 450m
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-configmap
+  namespace: prod
+data:
+  DB_ENGINE: "mysql"
+  DB_HOST: "mariadb"
+  DB_NAME: "ecommerce"
+  DB_USERNAME: "root"
+  DB_PASS: "SuperSecurePass123"
+  DB_PORT: "3306"
+  STRIPE_SECRET_KEY: "sk_test_..."
+  STRIPE_PUBLISHABLE_KEY: "pk_..."
 ---
 apiVersion: v1
 kind: Service
@@ -64,6 +82,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
     name: mariadb-pvc
+    namespace: prod
 spec:
     accessModes:
         - ReadWriteOnce
@@ -75,6 +94,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
     name: mariadb-config
+    namespace: prod
     labels:
         app: mariadb
 data:
@@ -89,6 +109,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: mariadb
+  namespace: prod
 spec:
   replicas: 1
   selector:
@@ -103,7 +124,9 @@ spec:
       containers:
       - env:
         - name: MYSQL_ROOT_PASSWORD
-          value: '@pr€ttyN1cePA$$W0RD!'
+          value: "SuperSecurePass123"
+        - name: MYSQL_DATABASE
+          value: "ecommerce"
         image: mariadb:latest
         name: mariadb
         ports:
@@ -132,9 +155,51 @@ apiVersion: v1
 kind: Service
 metadata:
     name: mariadb
+    namespace: prod
 spec:
     ports:
     - port: 3306
       targetPort: 3306
     selector:
       app: mariadb
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phpmyadmin
+  namespace: prod
+spec:
+  selector:
+    matchLabels:
+      app: phpmyadmin
+  template:
+    metadata:
+      labels:
+        app: phpmyadmin
+    spec:
+      containers:
+      - name: phpmyadmin
+        image: phpmyadmin/phpmyadmin:latest
+        env:
+        - name: PMA_HOST
+          value: mariadb
+        - name: PMA_PORT
+          value: "3306"
+        - name: PMA_ARBITRARY
+          value: "1"
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phpmyadmin-service
+  namespace: prod
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    targetPort: 80
+    nodePort: 30080
+  selector:
+    app: phpmyadmin

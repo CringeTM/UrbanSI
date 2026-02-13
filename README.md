@@ -31,7 +31,9 @@ minikube start --listen-address=0.0.0.0 --memory=max --cpus=max --kubernetes-ver
 L’image Docker n’était pas présente dans l’environnement Docker de Minikube, elle avait été construite uniquement dans le Docker local. Il a donc été nécessaire de charger l’image locale dans Minikube pour l’utiliser dans le cluster.
 
 ![Avant de charger l’image](docs/images/docker_image_1.png)
+
 ![Avant de charger l’image](docs/images/docker_image_2.png)
+
 ![Avant de charger l’image](docs/images/docker_image_3.png)
 
 ```bash
@@ -40,7 +42,69 @@ minikube image load rocket:local
 
 ![Après le chargement de l’image](docs/images/docker_image_4_rocket.png)
 
+Après avoir fait fonctionner l’image en local, nous l’avons publiée sur Docker Hub afin que les images des applications soient accessibles depuis un repository Docker Hub.
+
 ---
+
+### Publication de l’image sur Docker Hub
+
+Pour permettre le déploiement sur différents environnements et garantir l’accessibilité de l’image, celle-ci a été publiée sur un repository Docker Hub public : [warpprod/rocket-ecommerce](https://hub.docker.com/r/warpprod/rocket-ecommerce).
+
+L’image peut ainsi être utilisée directement dans les manifestes Kubernetes via la référence suivante :
+
+```bash
+docker build -t warpprod/rocket-ecommerce .
+```
+
+```text
+[+] Building 14.4s (8/16)                                                                                                                                          docker:default
+ => [internal] load build definition from Dockerfile                                                                                                                         0.0s
+ => => transferring dockerfile: 1.09kB                                                                                                                                       0.0s
+ => [internal] load metadata for docker.io/library/python:3.11.5                                                                                                             0.7s
+ => [auth] library/python:pull token for registry-1.docker.io                                                                                                                0.0s
+ => [internal] load .dockerignore                                                                                                                                            0.0s
+ => => transferring context: 2B                                                                                                                                              0.0s
+ => CACHED [ 1/11] FROM docker.io/library/python:3.11.5@sha256:2e376990a11f1c1e03796d08db0e99c36eadb4bb6491372b227f1e53c3482914                                              0.0s
+ => => resolve docker.io/library/python:3.11.5@sha256:2e376990a11f1c1e03796d08db0e99c36eadb4bb6491372b227f1e53c3482914                                                       0.0s
+ => [internal] load build context                                                                                                                                            0.0s
+ => => transferring context: 24.75kB                                                                                                                                         0.0s
+ => [ 2/11] COPY requirements.txt .                                                                                                                                          0.3s
+ => [ 3/11] RUN pip install --upgrade pip                                                                                                                                    5.2s
+ => [ 4/11] RUN pip install --no-cache-dir -r requirements.txt                                                                                                               7.8s 
+ => => #   Downloading mysqlclient-2.2.0.tar.gz (89 kB)                                                                                                                           
+ => => #   Installing build dependencies: started                                                                                                                                 
+ => => #   Installing build dependencies: finished with status 'done'                                                                                                             
+ => => #   Getting requirements to build wheel: started                                                                                                                           
+ => => #   Getting requirements to build wheel: finished with status 'done'                                                                                                       
+ => => #   Preparing metadata (pyproject.toml): started   
+
+ ... etc
+```
+
+Après avoir construit l’image, vous pouvez vérifier qu’elle est bien disponible avec la commande suivante :
+
+```bash
+docker images | grep warpprod/rocket-ecommerce
+```
+
+On peut également spécifier l’image dans vos manifestes Kubernetes comme ceci :
+
+```bash
+image: warpprod/rocket-ecommerce:latest
+```
+
+Cela assure que toutes les équipes et environnements peuvent accéder à la même version de l’application.
+
+### Vérification du nombre de réplicas
+
+Pour garantir la haute disponibilité de l’application, le nombre de réplicas a été défini à 3 dans le manifeste Kubernetes :
+
+```yaml
+spec:
+    replicas: 3
+```
+
+Cela permet d’assurer que trois pods de l’application sont toujours déployés et disponibles dans le cluster.
 
 ## Accès à l’application via CURL (interne et externe)
 
@@ -111,11 +175,57 @@ Une base de données autre que SQLite doit être déployée et connectée à l�
 
 La documentation [MariaDB sur Kubernetes de IONOS](https://www.ionos.fr/digitalguide/hebergement/aspects-techniques/mariadb-kubernetes/) a été utilisée pour intégrer MariaDB au projet. Le fichier a été adapté pour répondre aux besoins spécifiques.
 
+Nous avons ajouter les namespaces "prod" sur notre fichier pour faire fonctionner MariaDB et PhpMyAdmin.
+
+Pour voir les infos de mariadb, vous pouvez lire `prod-deployment.yml`.
+
 ```yaml
+# Principales informations de mariadb
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+    name: mariadb-pv
+spec:
+    capacity:
+        storage: 10Gi
+    accessModes:
+        - ReadWriteOnce
+    persistentVolumeReclaimPolicy: Retain
+    hostPath:
+        path: /mnt/data/mariadb
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: mariadb-pvc
+    namespace: prod
+spec:
+    accessModes:
+        - ReadWriteOnce
+    resources:
+        requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: mariadb-config
+    namespace: prod
+    labels:
+        app: mariadb
+data:
+    my.cnf: |
+        [mysqld]
+        bind-address=0.0.0.0
+        default_storage_engine=InnoDB
+        innodb_file_per_table=1
+        max_connections=1000
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: mariadb
+  namespace: prod
 spec:
   replicas: 1
   selector:
@@ -130,7 +240,9 @@ spec:
       containers:
       - env:
         - name: MYSQL_ROOT_PASSWORD
-          value: '@pr€ttyN1cePA$$W0RD!'
+          value: "SuperSecurePass123"
+        - name: MYSQL_DATABASE
+          value: "ecommerce"
         image: mariadb:latest
         name: mariadb
         ports:
@@ -159,12 +271,57 @@ apiVersion: v1
 kind: Service
 metadata:
     name: mariadb
+    namespace: prod
 spec:
     ports:
     - port: 3306
       targetPort: 3306
     selector:
       app: mariadb
+```
+
+```yaml
+# Partie pour phpmyadmin
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phpmyadmin
+  namespace: prod
+spec:
+  selector:
+    matchLabels:
+      app: phpmyadmin
+  template:
+    metadata:
+      labels:
+        app: phpmyadmin
+    spec:
+      containers:
+      - name: phpmyadmin
+        image: phpmyadmin/phpmyadmin:latest
+        env:
+        - name: PMA_HOST
+          value: mariadb
+        - name: PMA_PORT
+          value: "3306"
+        - name: PMA_ARBITRARY
+          value: "1"
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phpmyadmin-service
+  namespace: prod
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    targetPort: 80
+    nodePort: 30080
+  selector:
+    app: phpmyadmin
 ```
 
 ```bash
