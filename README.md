@@ -152,7 +152,7 @@ Cela permet d’assurer que trois pods de l’application sont toujours déploy�
 
 ### Accès interne via le LoadBalancer
 
-Le fichier de configuration du LoadBalancer est disponible ici : [prod-deployment.yaml](docs/files/prod-deployment.yaml)
+Le fichier de configuration du LoadBalancer est disponible ici : [prod-deployment.yaml](files/prod-deployment.yaml)
 
 ```bash
 curl -I 192.168.49.2:31491
@@ -211,9 +211,9 @@ L’infrastructure as code doit être déployée de façon identique dans ces tr
 
 Trois fichiers de déploiement Kubernetes ont été créés pour isoler les environnements :
 
-- [`prod-deployment.yaml`](docs/files/prod-deployment.yaml) : environnement de production
-- [`preprod-deployment.yaml`](docs/files/preprod-deployment.yaml) : environnement de préproduction
-- [`mlops-deployment.yaml`](docs/files/mlops-deployment.yaml) : environnement MLOps
+- [`prod-deployment.yaml`](files/prod-deployment.yaml) : environnement de production
+- [`preprod-deployment.yaml`](files/preprod-deployment.yaml) : environnement de préproduction
+- [`mlops-deployment.yaml`](files/mlops-deployment.yaml) : environnement MLOps
 
 Chaque fichier contient la même structure d’infrastructure (namespace, déploiements, services, volumes, etc.), adaptée à l’environnement cible.  
 Cela permet à chaque équipe de travailler dans un environnement isolé, tout en garantissant la cohérence des ressources déployées.
