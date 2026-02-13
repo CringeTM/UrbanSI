@@ -1,12 +1,18 @@
 # Projet E5 SAB - Urbanisation des SI
 
 Ce document présente la démarche et les étapes réalisées dans le cadre du projet d’urbanisation des systèmes d’information (SI).
+## Groupe et Références
 
-## Ressources
+- **Membres du groupe :**
+    - Mathieu LALANDE
+    - Eloise BLAIZOT
+    - Amaury DUPRESSOIRE
+    - Lucie CADET
+    - Anthony BILLON
+
+- [Dépôt GitHub du projet](https://github.com/CringeTM/UrbanSI?tab=readme-ov-file)
 
 - [TP : Projet E5 SAB - Urbanisation des SI (PDF)](docs/pdf/Projet%20E5%20SAB%20-%20Urbanisation%20des%20SI.pdf)
-
----
 
 ## Partie 1 : Mise en place de l’environnement
 
@@ -14,9 +20,7 @@ Ce document présente la démarche et les étapes réalisées dans le cadre du p
 
 Le framework sélectionné pour répondre aux critères du MVP est Minikube.
 
-```text
-Minikube correspond à ce framework, il sera donc utilisé pour la suite du projet.
-```
+**Minikube correspond à ce framework, il sera donc utilisé pour la suite du projet.**
 
 ### Lancement de Minikube
 
@@ -94,6 +98,42 @@ image: warpprod/rocket-ecommerce:latest
 ```
 
 Cela assure que toutes les équipes et environnements peuvent accéder à la même version de l’application.
+
+### Initialisation de la base de données et connexion à l’application e-commerce
+
+Après le déploiement de MariaDB, il est nécessaire d’initialiser la base de données et de connecter l’application e-commerce à celle-ci. Pour cela :
+
+1. **Configurer la connexion** :  
+    Pensez également à modifier le fichier `requirements.txt` pour ajouter la dépendance suivante :  
+
+    ```python
+    PyMySQL==1.1.0
+    ```
+
+2. **Vérifier la connexion** :  
+    Nous avons ensuite accéder à PhpMyAdmin via le port exposé (`localhost:8080`) pour vérifier que les tables ont bien été créées et que l’application communique correctement avec la base MariaDB.
+
+Après avoir initialisé la base de données, l’application e-commerce est désormais connectée à MariaDB déployée dans le cluster Kubernetes.
+
+![Initialisation de la base de donnée](docs/images/initiation_bdd.png)
+
+Nous avons ensuite ajouté un produit **Mug** dans Stripe, qui apparaît bien dans l’interface du site e-commerce :
+
+| Produit ajouté dans Stripe | Affichage du produit sur le site |
+|---------------------------|----------------------------------|
+| ![Mug dans Stripe](docs/images/mug_stripe.png) | ![Mug sur le site](docs/images/mug_stripe_site.png) |
+
+Pour valider le parcours d’achat, une transaction a été réalisée depuis le site pour acheter ce **Mug**. La réussite de la transaction est visible à la fois dans Stripe et sur le site e-commerce :
+
+| Transaction réussie dans Stripe | Confirmation sur le site e-commerce |
+|---------------------------------|-------------------------------------|
+| ![Transaction Stripe](docs/images/mug_stripe_transaction.png) | ![Page d'achat](docs/images/mug_stripe_site_transaction_page.png) <br> ![Achat réussi](docs/images/mug_stripe_site_transaction.png) |
+
+Enfin, les informations de la commande et du produit acheté sont bien enregistrées dans la base de données, consultables via phpMyAdmin :
+
+| Commandes dans phpMyAdmin | Produit acheté |
+|--------------------------|----------------|
+| ![Commandes](docs/images/phpmyadmin_order.png) | ![Produit](docs/images/phpmyadmin_product.png) |
 
 ### Vérification du nombre de réplicas
 
